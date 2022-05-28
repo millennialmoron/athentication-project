@@ -3,7 +3,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require("mongoose");
-const encrypt = require("mongoose-encryption");
+const SHA256 = require("crypto-js/sha256");
 
 const app = express();
 
@@ -21,11 +21,6 @@ async function main() {
     password: String,
   });
 
-  userSchema.plugin(encrypt, {
-    secret: process.env.SECRET,
-    encryptedFields: ["password"],
-  });
-
   const User = new mongoose.model("User", userSchema);
 
   app.get("/", function (req, res) {
@@ -39,7 +34,7 @@ async function main() {
     })
     .post(function (req, res) {
       const username = req.body.username;
-      const password = req.body.password;
+      const password = SHA256(req.body.password).toString();
 
       User.findOne({ email: username }, function (err, foundUser) {
         if (err) {
@@ -62,7 +57,7 @@ async function main() {
     .post(function (req, res) {
       const newUser = new User();
       newUser.email = req.body.username;
-      newUser.password = req.body.password;
+      newUser.password = SHA256(req.body.password).toString();
       newUser.save(function (err) {
         if (err) {
           console.log("AHHH PANIC!!" + err);
