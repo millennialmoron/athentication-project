@@ -35,12 +35,18 @@ async function main() {
   const userSchema = new mongoose.Schema({
     email: String,
     password: String,
+    googleID: String,
+  });
+
+  const secretSchema = new mongoose.Schema({
+    secret: String,
   });
 
   userSchema.plugin(passportLocalMongoose);
   userSchema.plugin(findOrCreate);
 
   const User = new mongoose.model("User", userSchema);
+  const Secret = new mongoose.model("Secret", secretSchema);
 
   passport.use(User.createStrategy());
 
@@ -122,12 +128,34 @@ async function main() {
   );
 
   app.get("/secrets", function (req, res) {
-    if (req.isAuthenticated()) {
-      res.render("secrets.ejs");
-    } else {
-      res.redirect("/login");
-    }
+    Secret.find({ secret: { $ne: null } }, function (err, foundSecrets) {
+      if (err) {
+        console.log(err);
+      } else {
+        if (foundSecrets) {
+          res.render("secrets", { secrets: foundSecrets });
+        }
+      }
+    });
   });
+
+  app
+    .route("/submit")
+    .get(function (req, res) {
+      if (req.isAuthenticated()) {
+        res.render("submit.ejs");
+      } else {
+        res.redirect("/login");
+      }
+    })
+    .post(function (req, res) {
+      const submittedSecret = req.body.secret;
+
+      const newSecret = Secret();
+      newSecret.secret = submittedSecret;
+      newSecret.save();
+      res.redirect("/secrets");
+    });
 
   app.get("/logout", function (req, res) {
     req.logOut(function (err) {
